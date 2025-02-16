@@ -1,0 +1,256 @@
+---
+title: "Analyse"
+author: "Ben@2025"
+date: "2025-02-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+df2=read.table("C:/Users/DELL/Desktop/Anaysis_Professeur_Sabitti/Exercice_1.txt",sep="\t", h=T)
+summary(df2)
+```
+
+## Afficher les données de 5 individus
+
+```{r}
+head(df2)
+```
+
+
+
+```{r}
+summary(df2)
+```
+
+```{r}
+# Installer les packages nécessaires si ce n'est pas déjà fait
+if (!require(ggplot2)) install.packages("ggplot2")
+
+# Charger les packages
+library(ggplot2)
+# Identifier les colonnes quantitatives
+vars_quantitatives <- sapply(df2, is.numeric)
+```
+
+```{r}
+# Créer un histogramme pour chaque variable quantitative
+for (var in names(df2)[vars_quantitatives]) {
+  print(ggplot(df2, aes_string(x = var)) +
+          geom_histogram(bins = 30, fill = "blue", color = "black") +
+          theme_minimal() +
+          labs(title = paste("Histogramme de", var), x = var, y = "Fréquence"))
+}
+
+```
+
+```{r}
+# Créer un boxplot pour chaque variable quantitative
+
+for (var in names(df2)[vars_quantitatives]) {
+  print(ggplot(df2, aes_string(x = factor(1), y = var)) +
+          geom_boxplot(fill = "skyblue", color = "darkblue") +
+          theme_minimal() +
+          labs(title = paste("Boxplot de", var), x = "", y = var))
+}
+```
+
+```{r}
+# Installer les packages si nécessaire
+if (!require(ggplot2)) install.packages("ggplot2")
+if (!require(corrplot)) install.packages("corrplot")
+```
+
+```{r}
+# Charger les packages
+library(ggplot2)
+library(corrplot)
+```
+
+
+
+```{r}
+# Calculer la matrice de corrélation
+matrice_correlation <- cor(donnees_quantitatives, use = "complete.obs")
+```
+
+```{r}
+# Créer la heatmap de corrélation avec des coefficients plus visibles
+corrplot(matrice_correlation, method = "color", type = "upper", order = "hclust",
+         tl.col = "black", tl.srt = 45, 
+         addCoef.col = "black", # Couleur des coefficients
+         cl.pos = "n", # Position de la légende de couleur
+         cl.cex = 1.2, # Taille de la légende de couleur
+         addCoefasPercent = TRUE, # Afficher les coefficients en pourcentage
+         number.cex = 0.8) # Taille des chiffres des coefficients
+```
+
+
+```{r}
+# Centrer et réduire les données
+donnees_centrees_reduites <- scale(donnees_quantitatives,center = TRUE,scale=TRUE)
+```
+
+# Etape 4: Réalisation de l'ACP avec Factominer
+
+```{r}
+# Installer les packages si nécessaire
+if (!require("FactoMineR")) install.packages("FactoMineR")
+if (!require("devtools")) install.packages("devtools")
+library("devtools")
+install_github("kassambara/factoextra")
+
+# Charger les packages
+library(FactoMineR)
+library("factoextra")
+# Réaliser l'ACP
+resultat_acp <- PCA(donnees_centrees_reduites, graph = FALSE)
+
+# Afficher les résultats de l'ACP
+print(resultat_acp)
+```
+
+## Choix du nombre d'axe factoriel
+
+```{r}
+valeurspropres <- resultat_acp$eig
+valeurspropres
+```
+
+```{r}
+barplot(valeurspropres[, 2], names.arg=1:nrow(valeurspropres), 
+       main = "Pourcentage de la variance expliquée par chaque composante",
+       xlab = "Composantes principales",
+       ylab = "Pourcentage de variance expliquée",
+       col ="steelblue")
+# Add connected line segments to the plot
+lines(x = 1:nrow(valeurspropres), valeurspropres[, 2], 
+      type="b", pch=19, col = "red")
+```
+
+```{r}
+#Utilisation du package factoextra
+# Créer le graphique des valeurs propres
+fviz_eig(resultat_acp, addlabels = TRUE)
+
+```
+
+## Représentation du cercle de corrélation
+
+```{r}
+
+# Créer le graphique du cercle de corrélation
+fviz_pca_var(resultat_acp, 
+             col.var = "cos2", # Utiliser la qualité de représentation (cos2) pour la couleur
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), # Palette de couleurs
+             repel = TRUE, # Éviter le chevauchement des étiquettes
+             title = "Cercle de Corrélation des Variables")
+```
+
+```{r}
+# Créer le graphique du cercle de corrélation
+# Créer le graphique du cercle de corrélation
+fviz_pca_var(resultat_acp, 
+             col.var = "contrib", # Utiliser la contribution
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), # Palette de couleurs
+             repel = TRUE, # Éviter le chevauchement des étiquettes
+             title = "Cercle de Corrélation des Variables")
+
+```
+
+```{r}
+# Coordonnées des individus
+head(resultat_acp$ind$coord)
+
+# Cos 2 des individus
+head(resultat_acp$ind$cos2)
+#Contribution des individus
+head(resultat_acp$ind$contrib)
+```
+
+```{r}
+# Contributions of variables to PC1"
+fviz_contrib(resultat_acp, choice = "var", axes = 1, top = 3)
+# Contributions of variables to PC2
+fviz_contrib(resultat_acp, choice = "var", axes = 2, top = 10)
+```
+
+```{r}
+# Cosinus carré des variables sur la première composante principale (PC1)
+fviz_cos2(resultat_acp, choice = "var", axes = 1, top = 10) +
+  ggtitle("Qualité de la représentation des variables sur la PC1 (cos²)")
+
+# Cosinus carré des variables sur la deuxième composante principale (PC2)
+fviz_cos2(resultat_acp, choice = "var", axes = 2, top = 10) +
+  ggtitle("Qualité de la représentation des variables sur la PC2 (cos²)")
+```
+
+```{r}
+fviz_pca_ind(resultat_acp,  col.ind="cos2") +
+scale_color_gradient2(low="blue", mid="white", 
+                      high="red", midpoint=0.50)+
+  theme_minimal()
+```
+
+```{r}
+
+# Filtrer les individus avec cos² > 50%
+ind_cos2 <- apply(resultat_acp$ind$cos2, 1, max) > 0.5
+
+# Filtrer les variables avec cos² > 50%
+var_cos2 <- apply(resultat_acp$var$cos2, 1, max) > 0.5
+
+# Créer un graphique combiné des individus et des variables
+fviz_pca_biplot(resultat_acp,
+                select.ind = list(cos2 = 0.5), # Sélectionner les individus avec cos² > 50%
+                select.var = list(cos2 = 0.5), # Sélectionner les variables avec cos² > 50%
+                repel = TRUE, # Éviter le chevauchement des étiquettes
+                title = "Biplot des Individus et des Variables (cos² > 50%)",
+                col.ind = "blue", # Couleur des individus
+                col.var = "red" # Couleur des variables
+                )
+```
+
+# Ajout des variables supplémentaires
+
+```{r}
+resultat_acp <- PCA(decathlon_data, 
+                    quanti.sup = 10,
+                    quali.sup = 13, # Numéro de colonne de la variable qualitative
+                    graph = TRUE)
+```
+
+```{r}
+fviz_pca_ind(resultat_acp, habillage = 13,
+  addEllipses =TRUE, ellipse.level = 0.68) +
+  scale_color_brewer(palette="Dark2") +
+  theme_minimal()
+```
+
+```{r}
+# Création du graphique
+fviz_pca_ind(resultat_acp, habillage = 13, # Utiliser la 13ème colonne pour le coloriage
+             addEllipses = TRUE, ellipse.level = 0.68) +
+  scale_color_brewer(palette = "Dark2") + # Palette de couleurs
+  theme_minimal() + # Thème minimaliste
+  ggtitle("ACP avec R") # Ajouter un titre (assurez-vous que le titre n'est pas NA/NaN)
+```
+
+```{r}
+resultat_acp$quanti.sup
+```
+
+```{r}
+res.desc <- dimdesc(resultat_acp, axes = c(4,5), proba = 0.05)
+# Description of dimension 1
+res.desc
+```
